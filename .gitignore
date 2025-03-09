@@ -32,4 +32,4 @@ Thumbs.db # Windows
 checkpatch.pl
 .clang-format
 
-lotr.txt
+*.txt
