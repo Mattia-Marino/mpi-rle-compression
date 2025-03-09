@@ -1,4 +1,6 @@
-#include "common.h"
+// SPDX-License-Identifier: GPL-3.0
+
+#include "../include/common.h"
 
 uint64_t get(FILE *stream, unsigned char *used, unsigned char *cur,
 	     unsigned char size)
@@ -6,6 +8,7 @@ uint64_t get(FILE *stream, unsigned char *used, unsigned char *cur,
 	char left = size;
 	char c, mask;
 	uint64_t ret = 0;
+
 	while (left && !feof(stream)) {
 		if (left > 8) {
 			if (!(*used)) { // all of cur unused, needed so put it in ret
@@ -77,6 +80,7 @@ void put(FILE *stream, uint64_t toPut, unsigned char *used, unsigned char *cur,
 		} else {
 			// need to fill cur, then write and repeat
 			uint64_t temp = toPut;
+
 			temp = temp >>
 			       (left -
 				(8 - *used)); // move relevant bits tobottom

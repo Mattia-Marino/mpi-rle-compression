@@ -1,4 +1,6 @@
-#include "mpiCommon.h"
+// SPDX-License-Identifier: GPL-3.0
+
+#include "../include/mpi_common.h"
 
 uint64_t get(FILE *stream, unsigned char *used, unsigned char *cur,
 	     unsigned char size)
@@ -6,6 +8,7 @@ uint64_t get(FILE *stream, unsigned char *used, unsigned char *cur,
 	char left = size;
 	char c, mask;
 	uint64_t ret = 0;
+
 	while (left && !feof(stream)) {
 		if (left > 8) {
 			if (!(*used)) { // all of cur unused, needed so put it in ret
@@ -52,6 +55,7 @@ void put(unsigned char *outBuf, uint64_t toPut, unsigned char *used,
 	// writes size number of bits to a stream
 	unsigned char left = size; // bits still to write
 	uint64_t mask;
+
 	while (left > 0) { // while there are still bits to write
 		if (left < (8 - *used)) {
 			// if there is enough space in cur for the rest of the bits,
@@ -73,6 +77,7 @@ void put(unsigned char *outBuf, uint64_t toPut, unsigned char *used,
 		} else {
 			// need to fill cur, then write and repeat
 			uint64_t temp = toPut;
+
 			temp = temp >>
 			       (left -
 				(8 - *used)); // move relevant bits tobottom

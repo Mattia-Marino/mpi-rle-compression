@@ -1,65 +1,16 @@
-#include "mpiCommon.h"
-#include <string.h>
-#include <stdlib.h>
+// SPDX-License-Identifier: GPL-3.0
+
+#include <inttypes.h>
 #include <math.h>
 #include <mpi.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/time.h>
 
-void getMetaData(FILE *meta, FILE *data, unsigned char *mUsed,
-		 unsigned char *dUsed, unsigned char *mCur, unsigned char *dCur,
-		 unsigned char *runLen, unsigned char *keyLen,
-		 uint64_t *numRuns, unsigned char *expProcs)
-{
-	// gets data out of the beginning of the meta, data files on the bit
-	// lengths of keys and the number of runs
-	*mUsed = *dUsed = 0;
-	*mCur = fgetc(meta);
-	*dCur = fgetc(data);
-
-	unsigned char expProcsSize = 8; // should be 1 bit, but time
-	unsigned char tagSize = 8; // should be 6 bits, but time
-	unsigned char numRunSize = 48;
-
-	*expProcs = get(meta, mUsed, mCur, expProcsSize);
-	*numRuns = get(meta, mUsed, mCur, numRunSize);
-	*runLen = (char)get(meta, mUsed, mCur, tagSize);
-	*keyLen = (char)get(data, dUsed, dCur, tagSize);
-}
-
-void decompress(FILE *meta, FILE *data, char *outBuf, unsigned char *mUsed,
-		unsigned char *dUsed, unsigned char *mCur, unsigned char *dCur,
-		unsigned char runLen, unsigned char keyLen, uint64_t numRuns)
-{
-	// iterates throuh meta to find a run length, then through data for that
-	// length. continues for numRuns iterations through meta.
-	uint64_t run, key, i, j, k, bufIdx;
-	unsigned char oCur;
-	unsigned char oUsed = 0;
-	bufIdx = 0;
-
-	for (k = 0; k < numRuns; ++k) {
-		run = get(meta, mUsed, mCur, runLen);
-		// escape code indicating a series of unique keys
-		if (run == 0) {
-			run = get(meta, mUsed, mCur, runLen);
-			for (j = 0; j < run; ++j) {
-				// iterate through unique keys, writing them to the file
-				key = get(data, dUsed, dCur, keyLen);
-				put(outBuf, key, &oUsed, &oCur, keyLen,
-				    &bufIdx);
-			}
-		}
-		// "proper" run (repetition of the same key)
-		else {
-			key = get(data, dUsed, dCur, keyLen);
-			for (j = 0; j < run; ++j) {
-				// write the key as many times as the meta file says to
-				put(outBuf, key, &oUsed, &oCur, keyLen,
-				    &bufIdx);
-			}
-		}
-	}
-}
+#include "../../include/mpi_common.h"
+#include "../../include/mpi_decompressor.h"
 
 int main(int argc, char **argv)
 {
@@ -69,15 +20,17 @@ int main(int argc, char **argv)
 	}
 
 	// initialize MPI
-	MPI_Init(NULL, NULL);
+
 	int nProc, rank;
+
+	MPI_Init(NULL, NULL);
 	MPI_Comm_size(MPI_COMM_WORLD, &nProc);
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
 	struct timeval tvStart, tvEnd;
-	if (rank == 0) {
+
+	if (rank == 0)
 		gettimeofday(&tvStart, 0);
-	}
 
 	char rankStr[10];
 	int rankLen = sprintf(rankStr, "%i", rank);
@@ -85,10 +38,12 @@ int main(int argc, char **argv)
 	// get input files
 	char *dataName = malloc(strlen(argv[1]) + 5 + rankLen);
 	char *metaName = malloc(strlen(argv[1]) + 5 + rankLen);
+
 	memmove(dataName, argv[1], strlen(argv[1]));
 	memmove(metaName, argv[1], strlen(argv[1]));
 
 	int i;
+
 	for (i = 0; i < rankLen; ++i) {
 		dataName[strlen(argv[1]) + i] = rankStr[i];
 		metaName[strlen(argv[1]) + i] = rankStr[i];
@@ -113,7 +68,9 @@ int main(int argc, char **argv)
 		       nProc);
 		MPI_Abort(MPI_COMM_WORLD, MPI_ERR_RANK);
 	}
+
 	uint64_t numSlices, run;
+
 	numSlices = 0;
 	for (i = 0; i < numRuns; ++i) {
 		run = get(meta, &mUsed, &mCur, runLen);
@@ -128,25 +85,25 @@ int main(int argc, char **argv)
 	uint64_t numBytes = (numBits / 8) + 1;
 	char *outBuf = malloc(sizeof(char) * numBytes);
 
-	if (rank == 0) {
+	if (rank == 0)
 		printf("got metadata, decompressing...\n");
-	}
 
 	decompress(meta, data, outBuf, &mUsed, &dUsed, &mCur, &dCur, runLen,
 		   keyLen, numRuns);
 
 	MPI_Barrier(MPI_COMM_WORLD);
 
-	if (rank == 0) {
+	if (rank == 0)
 		printf("decompressed, writing...\n");
-	}
 
 	if (rank == 0) {
 		FILE *out = fopen(argv[2], "wb");
 		// write to out file
 		fwrite(outBuf, 1, (numBytes - 1), out); // -1 because of tail
+
 		int inBytes;
 		char *inBuf;
+
 		for (i = 1; i < nProc; ++i) {
 			// recieve from i, write data
 			MPI_Recv(&inBytes, 1, MPI_INT, i, i, MPI_COMM_WORLD,
@@ -169,6 +126,7 @@ int main(int argc, char **argv)
 
 	if (rank == 0) {
 		struct timeval elapsedTime;
+
 		gettimeofday(&tvEnd, 0);
 		subtractTime(&tvStart, &tvEnd, &elapsedTime);
 		printf("Elapsed time: %ld.%ld06\n", elapsedTime.tv_sec,
@@ -184,10 +142,3 @@ int main(int argc, char **argv)
 	MPI_Finalize();
 	return 0;
 }
-
-/*  **  **  **  **  **  **  **
-    Zzzzz  |\      _,,,--,,_        +-----------------------------+
-           /,`.-'`'   ._  \-;;,_    | Why is there always a cat   |
-          |,4-  ) )_   .;.(  `'-'   | on whatever you're editing? |
-         '---''(_/._)-'(_\_)        +-----------------------------+
-**  **  **  **  **  **  **  */

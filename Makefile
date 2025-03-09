@@ -10,7 +10,7 @@ TARGETS = parallel_compress parallel_decompress serial_compress serial_decompres
 
 # Subdirectory definitions
 COMP_SRC_DIR = ./compression/src/
-DECPSUBDIR = ./decompression/
+DECP_SRC_DIR = ./decompression/src/
 
 # Default target
 all : ${TARGETS}
@@ -26,25 +26,31 @@ parallel_compress : \
 	${MPICC} ${CFLAGS} -o parallel_compress $^ -lm
 
 # Parallel decompression target
-parallel_decompress: $(DECPSUBDIR)mpiDecompress.o $(DECPSUBDIR)mpiCommon.o
+parallel_decompress: \
+    $(DECP_SRC_DIR)parallel/main.o \
+    $(DECP_SRC_DIR)mpi_common.o \
+    $(DECP_SRC_DIR)mpi_decompressor.o
 	$(MPICC) ${CFLAGS} -o parallel_decompress $^ -lm
 
 # Serial compression target
 serial_compress : \
-    $(COMP_SRC_DIR)serial/main.o\
-    $(COMP_SRC_DIR)common.o\
-    $(COMP_SRC_DIR)buffIter.o\
-    $(COMP_SRC_DIR)writeBuff.o\
+    $(COMP_SRC_DIR)serial/main.o \
+    $(COMP_SRC_DIR)common.o \
+    $(COMP_SRC_DIR)buffIter.o \
+    $(COMP_SRC_DIR)writeBuff.o \
     $(COMP_SRC_DIR)u64array.o
 	${CC} ${CFLAGS} -o serial_compress $^ -lm
 
 # Serial decompression target
-serial_decompress: $(DECPSUBDIR)decompress.c $(DECPSUBDIR)common.o
+serial_decompress: \
+    $(DECP_SRC_DIR)serial/main.o \
+    $(DECP_SRC_DIR)common.o \
+    $(DECP_SRC_DIR)decompressor.c
 	$(CC) $(CFLAGS) -o serial_decompress $^ -lm
 
 
 # Object file rules for compression
-$(COMPSUBDIR)%.o : $(COMPSUBDIR)%.c
+$(COMP_SRC_DIR)%.o : $(COMP_SRC_DIR)%.c
 	${CC} ${CFLAGS} -o $@ -c $<
 
 $(COMP_SRC_DIR)serial/main.o: $(COMP_SRC_DIR)serial/main.c
@@ -55,13 +61,13 @@ $(COMP_SRC_DIR)parallel/main.o: $(COMP_SRC_DIR)parallel/main.c
 
 
 # Object file rules for decompression
-$(DECPSUBDIR)common.o: $(DECPSUBDIR)common.c
+$(DECP_SRC_DIR)%.o : $(DECP_SRC_DIR)%.c
+	${CC} ${CFLAGS} -o $@ -c $<
+
+$(DECP_SRC_DIR)serial/main.o: $(DECP_SRC_DIR)serial/main.c
 	$(CC) $(CFLAGS) -o $@ -c $<
 
-$(DECPSUBDIR)mpiCommon.o: $(DECPSUBDIR)mpiCommon.c
-	$(MPICC) $(CFLAGS) -o $@ -c $<
-
-$(DECPSUBDIR)mpiDecompress.o: $(DECPSUBDIR)mpiDecompress.c
+$(DECP_SRC_DIR)parallel/main.o: $(DECP_SRC_DIR)parallel/main.c
 	$(MPICC) $(CFLAGS) -o $@ -c $<
 
 
