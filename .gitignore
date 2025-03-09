@@ -1,0 +1,35 @@
+# Object files
+*.o
+*.obj
+
+# Executables
+*.exe
+*.out
+parallel_compress
+parallel_decompress
+serial_comrpess
+serial_decompress
+
+# Temporary files
+*~
+*.swp
+*.bak
+*.tmp
+
+# Editor/IDE specific files
+.vscode/
+.idea/
+*.cbp # Code::Blocks project files
+*.suo # Visual Studio solution user options
+*.user # Visual Studio user files
+*.sln.DotSettings.user # Rider settings
+
+# System files
+.DS_Store # macOS
+Thumbs.db # Windows
+
+# Extras for formatting
+checkpatch.pl
+.clang-format
+
+lotr.txt
